@@ -22,6 +22,8 @@ SOFTWARE.
 """
 
 
+
+
 import streamlit as st
 import random
 from datetime import datetime, timedelta, date
@@ -79,6 +81,12 @@ st.markdown("""
     }
 
     /* Input Fields */
+    div[data-baseweb="select"] > div {
+        background-color: #374151;
+        color: white;
+        border-color: #4B5563;
+        border-radius: 8px;
+    }
     .stTextInput > div > div > input {
         background-color: #374151;
         color: white;
@@ -105,6 +113,22 @@ st.markdown("""
     }
     div.stButton > button:hover {
         background-color: #1D4ED8;
+    }
+            
+    /* --- NEW: BIGGER RADIO BUTTONS (FIXED) --- */
+    
+    /* 1. The Question Label */
+    div[data-testid="stRadio"] > label {
+        font-size: 24px !important;
+        font-weight: 800 !important;
+        color: #60A5FA !important;
+        margin-bottom: 15px !important;
+    }
+    
+    /* 2. The Options Text (Targeting the <p> tag inside is key) */
+    div[data-testid="stRadio"] div[role="radiogroup"] p {
+        font-size: 20px !important;
+        font-weight: 500 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -136,6 +160,45 @@ def get_month_days(year, month):
     elif month in [1, 3, 5, 7, 8, 10, 12]: return 31
     else: return 30
 
+# --- NEW: Dropdown Input Function ---
+def dropdown_date_input(label_key, default_date=None):
+    if default_date is None:
+        default_date = date.today()
+
+    # Layout: Day | Month | Year
+    c1, c2, c3 = st.columns([1, 1.3, 1.1])
+    
+    with c3:
+        # Year (Current year -1 to +2)
+        years = list(range(2024, 2031))
+        # Ensure default year is in range
+        start_y_index = 0
+        if default_date.year in years:
+            start_y_index = years.index(default_date.year)
+        
+        sel_y = st.selectbox("Year", years, index=start_y_index, key=f"{label_key}_y", label_visibility="collapsed")
+    
+    with c2:
+        # Month
+        months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+        sel_m_str = st.selectbox("Month", months, index=default_date.month-1, key=f"{label_key}_m", label_visibility="collapsed")
+        sel_m = months.index(sel_m_str) + 1
+    
+    with c1:
+        # Day (Dynamic based on Month/Year)
+        max_days = get_month_days(sel_y, sel_m)
+        days = list(range(1, max_days + 1))
+        
+        # Try to keep the previous day selection if possible
+        default_d_index = default_date.day - 1
+        if default_d_index >= len(days):
+            default_d_index = len(days) - 1
+            
+        sel_d = st.selectbox("Day", days, index=default_d_index, key=f"{label_key}_d", label_visibility="collapsed")
+        
+    return date(sel_y, sel_m, sel_d)
+
+
 def generate_human_logic_html(start_date, end_date):
     """
     Simulates a 'Start Fragment -> Middle Blocks -> End Fragment' walkthrough.
@@ -147,8 +210,6 @@ def generate_human_logic_html(start_date, end_date):
     if total_days < 28:
          weeks = total_days // 7
          days = total_days % 7
-         # Handle singular logic
-         days_text = "day" if days == 1 else "days"
          
          countdown_w = 40 - weeks
          if days > 0:
@@ -179,9 +240,8 @@ def generate_human_logic_html(start_date, end_date):
     days_in_start = get_month_days(start_date.year, start_date.month)
     start_frag = days_in_start - start_date.day
     
-    # Check if we are strictly within one month (handled by short gap above usually, but safe check)
+    # Check if we are strictly within one month
     if start_date.year == end_date.year and start_date.month == end_date.month:
-        # Fallback for weird edge case
         start_frag = end_date.day - start_date.day
     
     if start_frag > 0:
@@ -191,10 +251,8 @@ def generate_human_logic_html(start_date, end_date):
         html_output += f"• Rest of {start_date.strftime('%B')}: <strong>0d</strong> (End of month)<br>"
 
     # B. Middle Blocks
-    # Move cursor to 1st of next month
     cursor = (start_date.replace(day=1) + timedelta(days=32)).replace(day=1)
     
-    # Iterate until the cursor month is the same as end_date month
     while (cursor.year < end_date.year) or (cursor.year == end_date.year and cursor.month < end_date.month):
         days_in_curr = get_month_days(cursor.year, cursor.month)
         surplus = days_in_curr - 28
@@ -208,22 +266,17 @@ def generate_human_logic_html(start_date, end_date):
         accum_weeks_from_months += 4
         accum_surplus_days += surplus
         
-        # Next month
         cursor = (cursor.replace(day=1) + timedelta(days=32)).replace(day=1)
 
-    # C. End Fragment (Days into the final month)
-    # If we haven't overshot (sanity check)
+    # C. End Fragment
     if cursor.year == end_date.year and cursor.month == end_date.month:
         end_frag = end_date.day
-        # Note: If start/end were in same month, logic handled above. 
-        # But if they differ, end_frag is just the day number.
         html_output += f"• Days in {end_date.strftime('%B')}: <strong>{end_frag}d</strong><br>"
         accum_surplus_days += end_frag
 
     html_output += "</div>"
     
     # --- Tally ---
-    # Convert total surplus days into weeks + days
     surplus_weeks = accum_surplus_days // 7
     surplus_remainder = accum_surplus_days % 7
     
@@ -261,14 +314,14 @@ if 'redd_target' not in st.session_state:
 # --- 5. Main App Layout ---
 col1, col2 = st.columns([1, 2]) 
 with col1:
-    st.image("https://cdn-icons-png.flaticon.com/512/14373/14373993.png", width=180)
+    st.image("https://cdn-icons-png.flaticon.com/512/14373/14373989.png", width=200)
 
 with col2:
-    st.title("OB/GYN Trainer")
+    st.title("OB/GYN Gestational Age and EDD Trainer")
     st.caption("Created by Hafiz Daniel | 5th Year Med Student")
     st.markdown("""
     <div style="font-style: italic; color: #9CA3AF; font-size: 0.85em; margin-top: 5px;">
-        “Wherever the art of Medicine is loved, there is also a love of Humanity.”<br>
+        “Wherever the art of Medicine is loved, there is also a love of humanity.”<br>
         ― Hippocrates
     </div>
     """, unsafe_allow_html=True)
@@ -285,30 +338,28 @@ st.markdown("---")
 # ===========================
 if mode == "🤰 EDD (Naegele's Rule)":
     
-    # LAYOUT FIX: Source Selection is now distinct
     st.markdown("##### 1️⃣ Select LMP Source")
-    case_type = st.radio("Case Source:", ["🎲 Randomize", "✏️ Custom Input"], horizontal=True, label_visibility="collapsed", key="edd_source")
+    case_type = st.radio("Case Source:", ["🎲 Randomize", "✏️ Custom"], horizontal=True, label_visibility="collapsed", key="edd_source")
     
-    # Logic for LMP Generation
     if case_type == "🎲 Randomize":
-        if st.button("🔄 Generate New Case"):
+        if st.button("🔄 Generate New Date"):
             st.session_state['lmp'] = generate_random_date(2025, 2027)
     else:
-        custom_lmp = st.date_input("Select Patient LMP:", 
-                                  value=None, 
-                                  min_value=date(2020,1,1), 
-                                  format="DD/MM/YYYY")
-        if custom_lmp:
-            st.session_state['lmp'] = custom_lmp
+        # --- MODIFICATION: Using new dropdown input ---
+        st.write("Select Date:")
+        # We pass date.today() as default
+        custom_lmp = dropdown_date_input("lmp_input", default_date=date.today())
+        
+        # In this simple version, we just assign it. 
+        # Streamlit re-runs on every select change, so this works naturally.
+        st.session_state['lmp'] = custom_lmp
 
-    # Spacer to prevent calendar overlap
     st.write("")
     st.write("")
 
     if st.session_state['lmp']:
         lmp = st.session_state['lmp']
         
-        # Display Card - Moved UP for visibility
         st.markdown(f"""
         <div class="css-card">
             <h4 style="margin:0; color:#9CA3AF; font-size:14px;">PATIENT LMP</h4>
@@ -317,12 +368,14 @@ if mode == "🤰 EDD (Naegele's Rule)":
         """, unsafe_allow_html=True)
         
         st.markdown("##### 2️⃣ What is the EDD?")
-        input_type = st.radio("Input Method:", ["📅 Calendar Picker", "⌨️ Manual Typing"], horizontal=True, label_visibility="collapsed")
+        input_type = st.radio("Input Method:", ["📅 Calendar", "⌨️ Manual Typing"], horizontal=True, label_visibility="collapsed")
         
         user_date = None
-        if input_type == "📅 Calendar Picker":
-            # LAYOUT FIX: Added a unique key to prevent state conflict and spacing
-            user_date = st.date_input("Select EDD", min_value=date(2020,1,1), format="DD/MM/YYYY", key="edd_input_cal")
+        if input_type == "📅 Calendar":
+            # --- MODIFICATION: Using new dropdown input ---
+            # Default to LMP + 9 months to be helpful
+            approx_edd = lmp + timedelta(days=280)
+            user_date = dropdown_date_input("edd_input", default_date=approx_edd)
         else:
             date_str = st.text_input("Type EDD", placeholder="DD/MM/YYYY", key="edd_input_text")
             if date_str:
@@ -331,7 +384,7 @@ if mode == "🤰 EDD (Naegele's Rule)":
                 except ValueError:
                     st.warning("⚠️ Invalid format. Please use DD/MM/YYYY")
 
-        st.write("") # Spacer before button
+        st.write("") 
         
         if st.button("✅ Submit", key="submit_edd"):
             if user_date:
@@ -399,29 +452,35 @@ if mode == "🤰 EDD (Naegele's Rule)":
 # ===========================
 else:
     st.markdown("##### 1️⃣ Select Case Source")
-    col_mode1, col_mode2 = st.columns(2)
-    with col_mode1:
-        case_type_ga = st.radio("Case Source:", ["🎲 Randomize", "✏️ Custom Input"], horizontal=True, label_visibility="collapsed", key="ga_source")
+    case_type_ga = st.radio("Case Source:", ["🎲 Randomize", "✏️ Custom"], horizontal=True, label_visibility="collapsed", key="ga_source")
     
-    st.write("")
 
     if case_type_ga == "🎲 Randomize":
+        # New filter option
+        near_term = st.checkbox("🎯 Focus on Near Term (>30 Weeks)")
+        
         if st.button("🔄 Generate REDD Case"):
             st.session_state['redd_start'] = generate_random_date(2025, 2027)
-            days_to_due = random.randint(7, 210)
+            
+            if near_term:
+                # Less than 70 days remaining = More than 30 weeks gestation
+                days_to_due = random.randint(1, 70)
+            else:
+                # Standard range (roughly 4 weeks to 40 weeks)
+                days_to_due = random.randint(7, 250)
+                
             st.session_state['redd_target'] = st.session_state['redd_start'] + timedelta(days=days_to_due)
     else:
-        st.info("Select dates to calculate POA:")
-        c1, c2 = st.columns(2)
-        with c1:
-            custom_current = st.date_input("Current Date (e.g. Today)", value=date.today(), format="DD/MM/YYYY")
-        with c2:
-            custom_redd = st.date_input("REDD (Due Date)", value=date.today() + timedelta(days=280), format="DD/MM/YYYY")
+        # --- MODIFICATION: Dropdowns for GA Mode ---
+        st.write("Current Date:")
+        custom_current = dropdown_date_input("ga_current_input", default_date=date.today())
+        
+        st.write("REDD (Due Date):")
+        custom_redd = dropdown_date_input("ga_redd_input", default_date=date.today() + timedelta(days=280))
         
         st.session_state['redd_start'] = custom_current
         st.session_state['redd_target'] = custom_redd
 
-    # Spacer
     st.write("")
     
     if st.session_state['redd_start'] and st.session_state['redd_target']:
@@ -458,46 +517,104 @@ else:
             correct_w = days_elapsed // 7
             correct_d = days_elapsed % 7
             
-            if u_weeks == correct_w and u_days == correct_d:
+            # 1. CHECK: Negative Age (Time Traveler)
+            if correct_w < 0:
+                st.write("")
+                st.error("🛑 **Hold on, Time Traveller!** 🏎️💨")
+                st.write("")
+                st.markdown(f"""
+                <div style="text-align: center; padding: 40px; border: 2px dashed #ff4b4b; border-radius: 15px; margin-bottom: 30px;">
+                    <h1 style="font-size: 60px; margin: 0;">👶🚫</h1>
+                    <h2 style="color: #ff4b4b; font-size: 35px; margin-top: 10px;">Babies can't have negative age!</h2>
+                    <p style="font-size: 22px; margin-top: 20px; line-height: 1.5;">
+                        You are calculating for a date <strong>before the baby was even conceived.</strong><br>
+                        Unless this is a sci-fi movie, check your years!
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # 2. CHECK: Super Post-Term (Elephant)
+            elif correct_w > 50:
+                st.write("")
+                st.error("🛑 **Whoa, that's a long time!** 🐘")
+                st.write("")
+                st.markdown(f"""
+                <div style="text-align: center; padding: 40px; border: 2px dashed #ff4b4b; border-radius: 15px; margin-bottom: 30px;">
+                    <h1 style="font-size: 60px; margin: 0;">🎒📅</h1>
+                    <h2 style="color: #ff4b4b; font-size: 35px; margin-top: 10px;">Is this baby going to school?</h2>
+                    <p style="font-size: 22px; margin-top: 20px; line-height: 1.5;">
+                        You calculated <strong>{correct_w} weeks!</strong><br>
+                        Unless your patient is an Elephant (22 months gestation),<br>
+                        please check your dates!
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # 3. CHECK: Correct Answer
+            elif u_weeks == correct_w and u_days == correct_d:
                 st.success("**Correct!** Spot on.")
                 st.balloons()
+
+            # 4. CHECK: Incorrect Answer
             else:
                 st.error("**Incorrect.**")
                 st.metric("Correct POA", f"{correct_w}w + {correct_d}d")
             
-            with st.expander("🧠 Mental Math Strategy (How to think)", expanded=True):
-                # Use new logic generator
-                if days_remaining < 105:
-                     st.markdown(generate_human_logic_html(current, redd), unsafe_allow_html=True)
-                else:
-                    st.markdown(f"""
-                    <div class="logic-hint">
-                        <strong>Strategy: "The Count Up"</strong><br>
-                        Since it's early, counting forward is safer than subtracting backwards.
-                    </div>
-                    <div class="logic-step">
-                        <strong>1. Total Days Passed</strong><br>
-                        280 (Full Term) − {days_remaining} (Remaining) = <strong>{days_elapsed} days</strong>.
-                    </div>
-                    <div class="logic-step">
-                        <strong>2. Convert to Weeks</strong><br>
-                        {days_elapsed} ÷ 7 = <strong>{correct_w} weeks</strong>.
-                    </div>
-                     <div class="logic-step">
-                        <strong>3. Remainder</strong><br>
-                        Leftover days = <strong>{correct_d} days</strong>.
-                    </div>
-                     <div class="logic-final">
-                        Result: {correct_w}w + {correct_d}d
-                    </div>
-                    """, unsafe_allow_html=True)
-
+            # --- MENTAL MATH STRATEGY (Only show if date is valid) ---
+            if 0 <= correct_w <= 50:
+                with st.expander("🧠 Mental Math Strategy (How to think)", expanded=True):
+                    if days_remaining < 105:
+                         st.markdown(generate_human_logic_html(current, redd), unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"""
+                        <div class="logic-hint">
+                            <strong>Strategy: "The Count Up"</strong><br>
+                            Since it's early, counting forward is safer than subtracting backwards.
+                        </div>
+                        <div class="logic-step">
+                            <strong>1. Total Days Passed</strong><br>
+                            280 (Full Term) − {days_remaining} (Remaining) = <strong>{days_elapsed} days</strong>.
+                        </div>
+                        <div class="logic-step">
+                            <strong>2. Convert to Weeks</strong><br>
+                            {days_elapsed} ÷ 7 = <strong>{correct_w} weeks</strong>.
+                        </div>
+                         <div class="logic-step">
+                            <strong>3. Remainder</strong><br>
+                            Leftover days = <strong>{correct_d} days</strong>.
+                        </div>
+                         <div class="logic-final">
+                            Result: {correct_w}w + {correct_d}d
+                        </div>
+                        """, unsafe_allow_html=True)
 # --- 6. FOOTER & REFERENCE AREA ---
 st.write("")
 st.write("")
 st.markdown("---") 
 
-st.markdown("### 📚 Clinical Cheat Sheet")
+st.markdown("<h3 style='text-align: center;'>📚 Cheat Sheet</h3>", unsafe_allow_html=True)
+
+# Define the HTML as a single string first to avoid indentation errors
+cheat_sheet_html = """
+<div style="background-color: rgba(255, 75, 75, 0.15); border: 1px solid #ff4b4b; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+    <div style="text-align: center; margin-bottom: 15px;">
+        <strong style="color: #ff4b4b; font-size: 18px;">🛑 Prerequisites for Naegele's Rule</strong>
+    </div>
+    <ul style="margin: 0; padding-left: 20px; color: #ffdede;">
+        <li><strong>Sure of Date:</strong> Patient remembers LMP clearly.</li>
+        <li><strong>Regular Cycles:</strong> 28 days (+/- few days).</li>
+        <li><strong>No Hormonal Contraception:</strong> Stopped >3 months ago.</li>
+        <li><strong>No Breastfeeding:</strong> No lactational amenorrhea (within 6 months postpartum)</li>
+    </ul>
+    <hr style="border-color: rgba(255,75,75,0.3); margin: 15px 0;">
+    <div style="text-align: center;">
+        <strong style="color: #60A5FA;">🧮 The Formula</strong><br>
+        <span style="font-size: 18px; font-family: monospace;">EDD = LMP + 7 days − 3 months ± 1 year</span>
+    </div>
+</div>
+"""
+
+st.markdown(cheat_sheet_html, unsafe_allow_html=True)
 
 ref1, ref2, ref3 = st.columns(3)
 
@@ -530,6 +647,6 @@ with ref3:
 st.markdown("""
 <div style="text-align: center; margin-top: 50px; color: #6B7280; font-size: 12px;">
     FOR EDUCATIONAL PURPOSES ONLY. NOT FOR CLINICAL DIAGNOSIS.<br>
-    © 2025 OB/GYN Trainer v1.0
+    © 2025 OB/GYN Trainer v1.3
 </div>
 """, unsafe_allow_html=True)
