@@ -27,7 +27,7 @@ import random
 from datetime import datetime, timedelta, date
 
 # --- 1. Page Config ---
-st.set_page_config(page_title="OB/GYN Date Trainer", page_icon="🩺", layout="centered")
+st.set_page_config(page_title="OB/GYN Calculation Trainer", page_icon="🩺", layout="centered")
 
 # --- 2. MODERN UI & CSS ---
 st.markdown("""
@@ -265,7 +265,7 @@ with col1:
 
 with col2:
     st.title("OB/GYN Trainer")
-    st.caption("Created by Hafiz Daniel | 5th Year Med Student")
+    st.caption("Created by Hafiz Daniel | 5th Year Med Student 🏥")
     st.markdown("""
     <div style="font-style: italic; color: #9CA3AF; font-size: 0.85em; margin-top: 5px;">
         “Wherever the art of Medicine is loved, there is also a love of Humanity.”<br>
@@ -285,12 +285,11 @@ st.markdown("---")
 # ===========================
 if mode == "🤰 EDD (Naegele's Rule)":
     
-    col_mode1, col_mode2 = st.columns(2)
-    with col_mode1:
-        case_type = st.radio("Case Source:", ["🎲 Randomize", "✏️ Custom Input"], horizontal=True, label_visibility="collapsed", key="edd_source")
+    # LAYOUT FIX: Source Selection is now distinct
+    st.markdown("##### 1️⃣ Select LMP Source")
+    case_type = st.radio("Case Source:", ["🎲 Randomize", "✏️ Custom Input"], horizontal=True, label_visibility="collapsed", key="edd_source")
     
-    st.write("") 
-
+    # Logic for LMP Generation
     if case_type == "🎲 Randomize":
         if st.button("🔄 Generate New Case"):
             st.session_state['lmp'] = generate_random_date(2025, 2027)
@@ -302,9 +301,14 @@ if mode == "🤰 EDD (Naegele's Rule)":
         if custom_lmp:
             st.session_state['lmp'] = custom_lmp
 
+    # Spacer to prevent calendar overlap
+    st.write("")
+    st.write("")
+
     if st.session_state['lmp']:
         lmp = st.session_state['lmp']
         
+        # Display Card - Moved UP for visibility
         st.markdown(f"""
         <div class="css-card">
             <h4 style="margin:0; color:#9CA3AF; font-size:14px;">PATIENT LMP</h4>
@@ -312,21 +316,24 @@ if mode == "🤰 EDD (Naegele's Rule)":
         </div>
         """, unsafe_allow_html=True)
         
-        st.write("What is the EDD?")
+        st.markdown("##### 2️⃣ What is the EDD?")
         input_type = st.radio("Input Method:", ["📅 Calendar Picker", "⌨️ Manual Typing"], horizontal=True, label_visibility="collapsed")
         
         user_date = None
         if input_type == "📅 Calendar Picker":
-            user_date = st.date_input("Select EDD", min_value=date(2020,1,1), format="DD/MM/YYYY")
+            # LAYOUT FIX: Added a unique key to prevent state conflict and spacing
+            user_date = st.date_input("Select EDD", min_value=date(2020,1,1), format="DD/MM/YYYY", key="edd_input_cal")
         else:
-            date_str = st.text_input("Type EDD", placeholder="DD/MM/YYYY")
+            date_str = st.text_input("Type EDD", placeholder="DD/MM/YYYY", key="edd_input_text")
             if date_str:
                 try:
                     user_date = datetime.strptime(date_str, "%d/%m/%Y").date()
                 except ValueError:
                     st.warning("⚠️ Invalid format. Please use DD/MM/YYYY")
 
-        if st.button("✅ Submit Diagnosis"):
+        st.write("") # Spacer before button
+        
+        if st.button("✅ Submit Diagnosis", key="submit_edd"):
             if user_date:
                 correct_edd = lmp + timedelta(days=280)
                 diff = abs((user_date - correct_edd).days)
@@ -391,6 +398,7 @@ if mode == "🤰 EDD (Naegele's Rule)":
 # MODE 2: GESTATIONAL AGE
 # ===========================
 else:
+    st.markdown("##### 1️⃣ Select Case Source")
     col_mode1, col_mode2 = st.columns(2)
     with col_mode1:
         case_type_ga = st.radio("Case Source:", ["🎲 Randomize", "✏️ Custom Input"], horizontal=True, label_visibility="collapsed", key="ga_source")
@@ -413,6 +421,9 @@ else:
         st.session_state['redd_start'] = custom_current
         st.session_state['redd_target'] = custom_redd
 
+    # Spacer
+    st.write("")
+    
     if st.session_state['redd_start'] and st.session_state['redd_target']:
         current = st.session_state['redd_start']
         redd = st.session_state['redd_target']
@@ -441,7 +452,7 @@ else:
         with ic2:
             u_days = st.number_input("Days", 0, 6, step=1)
             
-        if st.button("✅ Submit Diagnosis"):
+        if st.button("✅ Submit Diagnosis", key="submit_ga"):
             days_remaining = (redd - current).days
             days_elapsed = 280 - days_remaining
             correct_w = days_elapsed // 7
@@ -455,6 +466,7 @@ else:
                 st.metric("Correct POA", f"{correct_w}w + {correct_d}d")
             
             with st.expander("🧠 Mental Math Strategy (How to think)", expanded=True):
+                # Use new logic generator
                 if days_remaining < 105:
                      st.markdown(generate_human_logic_html(current, redd), unsafe_allow_html=True)
                 else:
@@ -518,6 +530,6 @@ with ref3:
 st.markdown("""
 <div style="text-align: center; margin-top: 50px; color: #6B7280; font-size: 12px;">
     FOR EDUCATIONAL PURPOSES ONLY. NOT FOR CLINICAL DIAGNOSIS.<br>
-    © 2025 OB/GYN Trainer v6.9
+    © 2025 OB/GYN Trainer v1.0
 </div>
 """, unsafe_allow_html=True)
