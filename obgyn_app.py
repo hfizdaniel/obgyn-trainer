@@ -265,7 +265,7 @@ with col1:
 
 with col2:
     st.title("OB/GYN Trainer")
-    st.caption("Created by Hafiz Daniel | 5th Year Med Student 🏥")
+    st.caption("Created by Hafiz Daniel | 5th Year Med Student")
     st.markdown("""
     <div style="font-style: italic; color: #9CA3AF; font-size: 0.85em; margin-top: 5px;">
         “Wherever the art of Medicine is loved, there is also a love of Humanity.”<br>
@@ -333,7 +333,7 @@ if mode == "🤰 EDD (Naegele's Rule)":
 
         st.write("") # Spacer before button
         
-        if st.button("✅ Submit Diagnosis", key="submit_edd"):
+        if st.button("✅ Submit", key="submit_edd"):
             if user_date:
                 correct_edd = lmp + timedelta(days=280)
                 diff = abs((user_date - correct_edd).days)
@@ -452,7 +452,7 @@ else:
         with ic2:
             u_days = st.number_input("Days", 0, 6, step=1)
             
-        if st.button("✅ Submit Diagnosis", key="submit_ga"):
+        if st.button("✅ Submit", key="submit_ga"):
             days_remaining = (redd - current).days
             days_elapsed = 280 - days_remaining
             correct_w = days_elapsed // 7
